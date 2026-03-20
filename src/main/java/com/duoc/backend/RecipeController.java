@@ -29,6 +29,9 @@ public class RecipeController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable("id") Long id) {
+        if (id == null) {
+            return ResponseEntity.badRequest().build();
+        }
         Optional<Recipe> recipe = recipeRepository.findById(id);
         return recipe.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.notFound().build());
@@ -88,6 +91,9 @@ public class RecipeController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable("id") Long id) {
+        if (id == null) {
+            return ResponseEntity.badRequest().build();
+        }
         if (!recipeRepository.existsById(id)) {
             return ResponseEntity.notFound().build();
         }

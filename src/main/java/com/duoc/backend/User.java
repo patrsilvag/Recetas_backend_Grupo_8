@@ -9,8 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 
 @Entity // This tells Hibernate to make a table out of this class
+@Table(name = "USERS")
 public class User implements UserDetails {
   @Id
   @GeneratedValue(strategy=GenerationType.AUTO)
@@ -55,34 +58,29 @@ public class User implements UserDetails {
   }
 
 @Override
-public Collection getAuthorities() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'getAuthorities'");
+public Collection<? extends GrantedAuthority> getAuthorities() {
+    // Por ahora puedes retornar una lista vacía para que no lance excepción
+    return new java.util.ArrayList<>(); 
 }
 
 @Override
 public boolean isAccountNonExpired() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'isAccountNonExpired'");
+  return true; // Cambiado de Exception a true
 }
 
 @Override
 public boolean isAccountNonLocked() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'isAccountNonLocked'");
+  return true; // Permite que el usuario no esté bloqueado
 }
 
 @Override
 public boolean isCredentialsNonExpired() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'isCredentialsNonExpired'");
+  return true; // Las credenciales no expiran por ahora
 }
 
 @Override
 public boolean isEnabled() {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'isEnabled'");
+  return true; // El usuario está habilitado para entrar
 }
-
 
 }

@@ -37,7 +37,16 @@ package com.duoc.backend;
 
         private void setAuthentication(Claims claims) {
 
-            List<String> authorities = (List<String>) claims.get("authorities");
+            Object authoritiesClaim = claims.get("authorities");
+            List<String> authorities = new java.util.ArrayList<>();
+
+            if (authoritiesClaim instanceof List<?>) {
+                for (Object obj : (List<?>) authoritiesClaim) {
+                    if (obj instanceof String) {
+                        authorities.add((String) obj);
+                    }
+                }
+            }
 
             UsernamePasswordAuthenticationToken auth =
                     new UsernamePasswordAuthenticationToken(claims.getSubject(), null,
