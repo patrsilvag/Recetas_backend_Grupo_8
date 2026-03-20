@@ -3,13 +3,16 @@ package com.duoc.backend;
 import java.util.Collection;
 
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import java.util.Collections;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+
 
 
 @Entity // This tells Hibernate to make a table out of this class
@@ -59,8 +62,8 @@ public class User implements UserDetails {
 
 @Override
 public Collection<? extends GrantedAuthority> getAuthorities() {
-    // Por ahora puedes retornar una lista vacía para que no lance excepción
-    return new java.util.ArrayList<>(); 
+    // Esto asigna el rol "ROLE_USER" a cualquier usuario que haga login exitoso
+    return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
 }
 
 @Override

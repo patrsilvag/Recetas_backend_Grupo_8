@@ -22,12 +22,12 @@ public class RecipeController {
     @Autowired
     private RecipeRepository recipeRepository;
 
-    @GetMapping
+    @GetMapping("")
     public Iterable<Recipe> getAllRecipes() {
         return recipeRepository.findAll();
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/private/{id}")
     public ResponseEntity<Recipe> getRecipeById(@PathVariable("id") Long id) {
         if (id == null) {
             return ResponseEntity.badRequest().build();
