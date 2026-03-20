@@ -66,6 +66,10 @@ package com.duoc.backend;
         @Override
         protected void doFilterInternal(@SuppressWarnings("null") HttpServletRequest request, @SuppressWarnings("null") HttpServletResponse response, @SuppressWarnings("null") FilterChain filterChain) throws ServletException, IOException {
             try {
+                if (request.getServletPath().equals("/login")) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 if (isJWTValid(request, response)) {
                     Claims claims = setSigningKey(request);
                     if (claims.get("authorities") != null) {
