@@ -37,8 +37,7 @@ class WebSecurityConfig {
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
                         .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/recipes").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/recipes/search").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
                         .requestMatchers("/recipes/**").authenticated()
                         .anyRequest().authenticated())
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
