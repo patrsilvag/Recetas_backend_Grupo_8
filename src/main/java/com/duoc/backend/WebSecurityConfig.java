@@ -8,44 +8,56 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-// Imports necesarios para el PasswordEncoder
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+// NUEVOS IMPORTS PARA CORS
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import java.util.Arrays;
 
 @EnableWebSecurity()
 @Configuration
 class WebSecurityConfig {
 
-        @Autowired
-        JWTAuthorizationFilter jwtAuthorizationFilter;
+    @Autowired
+    JWTAuthorizationFilter jwtAuthorizationFilter;
 
-        @Bean
-        public PasswordEncoder passwordEncoder() {
-                return new BCryptPasswordEncoder();
-        }
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
 
-        @Bean
-        public SecurityFilterChain configure(HttpSecurity http) throws Exception {
-                http
-                                .csrf((csrf) -> csrf.disable())
-                                .authorizeHttpRequests(authz -> authz
-                                                // [PÚBLICA] Login y Errores 
-                                                .requestMatchers(HttpMethod.POST, "/login").permitAll()
-                                                .requestMatchers("/error").permitAll()
+    @Bean
+    public SecurityFilterChain configure(HttpSecurity http) throws Exception {
+        http
+                // 1. Habilitamos CORS con la configuración que definimos abajo
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .csrf((csrf) -> csrf.disable())
+                .authorizeHttpRequests(authz -> authz
+                        .requestMatchers(HttpMethod.POST, "/login").permitAll()
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/recipes").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/recipes/search").permitAll()
+                        .requestMatchers("/recipes/**").authenticated()
+                        .anyRequest().authenticated())
+                .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
-                                                // [PÚBLICA] Página de inicio y Búsqueda 
-                                                // Nota: Permitimos solo el GET a la lista y búsqueda
-                                                .requestMatchers(HttpMethod.GET, "/recipes").permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/recipes/search").permitAll()
+        return http.build();
+    }
 
-                                                // [PRIVADA] Visualizar detalles (id), crear o borrar 
-                                                // Al poner esta regla después, todo lo que no sea 'search' o '/'
-                                                // requerirá Token
-                                                .requestMatchers("/recipes/**").authenticated()
+    // 2. Definimos qué orígenes pueden hablar con este Backend (8081)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        // Permitimos el puerto del Frontend (ajusta si usas 80 u 8080)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8080", "http://localhost"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
 
-                                                .anyRequest().authenticated())
-                                .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
-
-                return http.build();
-        }
-} 
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
+    }
+}
