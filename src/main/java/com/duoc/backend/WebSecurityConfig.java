@@ -15,6 +15,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
+import static org.springframework.security.config.Customizer.withDefaults;
 
 @EnableWebSecurity()
 @Configuration
@@ -34,6 +35,12 @@ class WebSecurityConfig {
                 // 1. Habilitamos CORS con la configuración que definimos abajo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf((csrf) -> csrf.disable())
+                .headers(headers -> headers
+                        // A05: Corrección de CSP y X-Content-Type-Options
+                        .contentSecurityPolicy(
+                                csp -> csp.policyDirectives("default-src 'self'; script-src 'self'; style-src 'self';"))
+                        .contentTypeOptions(withDefaults()) // Activa el 'nosniff' por defecto
+                )
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers(HttpMethod.POST, "/login").permitAll()
                         .requestMatchers("/error").permitAll()
@@ -49,8 +56,15 @@ class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permitimos el puerto del Frontend (ajusta si usas 80 u 8080)
-        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8080", "http://localhost"));
+        
+        // ACTUALIZADO: Añadimos el puerto 8002 (tu nuevo Front) 
+        configuration.setAllowedOrigins(Arrays.asList(
+            "http://localhost:8002", 
+            "http://localhost:8080", 
+            "http://127.0.0.1:8002",
+            "http://localhost"
+        ));
+        
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
