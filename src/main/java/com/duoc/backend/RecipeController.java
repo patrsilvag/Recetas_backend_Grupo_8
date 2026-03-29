@@ -48,10 +48,14 @@ public class RecipeController {
         List<Recipe> results = new java.util.ArrayList<>();
         recipeRepository.findAll().forEach(results::add);
 
+        // 🛡️ SANITIZACIÓN ACTIVA (A03)
+        // Limpiamos los strings para que Oracle Cloud solo reciba texto seguro
         if (name != null && !name.isBlank()) {
+            name = name.replaceAll("[^a-zA-Z0-9 ]", "");
             results.retainAll(recipeRepository.findByNameContainingIgnoreCase(name));
         }
         if (cuisineType != null && !cuisineType.isBlank()) {
+            cuisineType = cuisineType.replaceAll("[^a-zA-Z0-9 ]", "");
             results.retainAll(recipeRepository.findByCuisineTypeContainingIgnoreCase(cuisineType));
         }
         if (countryOfOrigin != null && !countryOfOrigin.isBlank()) {
