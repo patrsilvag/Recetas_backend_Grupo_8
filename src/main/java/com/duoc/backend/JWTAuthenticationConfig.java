@@ -1,17 +1,14 @@
 package com.duoc.backend;
 
-    import io.jsonwebtoken.Jwts;
-    import org.springframework.context.annotation.Configuration;
-    import org.springframework.security.core.GrantedAuthority;
-    import org.springframework.security.core.authority.AuthorityUtils;
-
-    import java.util.Date;
-    import java.util.HashMap;
-    import java.util.List;
-    import java.util.Map;
-    import java.util.stream.Collectors;
-
     import static com.duoc.backend.Constants.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.core.GrantedAuthority;
+import io.jsonwebtoken.Jwts;
 
     @Configuration
     public class JWTAuthenticationConfig {

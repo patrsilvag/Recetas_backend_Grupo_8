@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -44,10 +45,12 @@ public class LoginController {
         }
 
         // 3. GENERAR TOKEN CON ROLES REALES 🚨
-        // Pasamos 'username' y la lista de autoridades que vienen de userDetails
+        // Convertimos a List de forma segura
+        List<GrantedAuthority> authorities = new ArrayList<>(userDetails.getAuthorities());
+
         String token = jwtAuthenticationConfig.getJWTToken(
-            username, 
-            (List<GrantedAuthority>) userDetails.getAuthorities()
+            username,
+            authorities
         );
 
         return ResponseEntity.ok(token);
