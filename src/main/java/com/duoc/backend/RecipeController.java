@@ -1,11 +1,13 @@
 package com.duoc.backend;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
 
 @RestController
 @RequestMapping("/recipes")
@@ -33,49 +36,45 @@ public class RecipeController {
             return ResponseEntity.badRequest().build();
         }
         Optional<Recipe> recipe = recipeRepository.findById(id);
-        return recipe.map(ResponseEntity::ok)
-                .orElseGet(() -> ResponseEntity.notFound().build());
+        return recipe.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
-    public Iterable<Recipe> searchRecipes(
-            @RequestParam(required = false) String name,
+    public Iterable<Recipe> searchRecipes(@RequestParam(required = false) String name,
             @RequestParam(required = false) String cuisineType,
             @RequestParam(required = false) String countryOfOrigin,
             @RequestParam(required = false) String difficulty,
-            @RequestParam(required = false) List<String> ingredients
-    ) {
-        List<Recipe> results = new java.util.ArrayList<>();
+            @RequestParam(required = false) List<String> ingredients) {
+        // Corrección SonarQube: Uso de ArrayList importado en lugar de java.util.ArrayList
+        List<Recipe> results = new ArrayList<>();
         recipeRepository.findAll().forEach(results::add);
 
         // 🛡️ SANITIZACIÓN ACTIVA (A03)
-        // Limpiamos los strings para que Oracle Cloud solo reciba texto seguro
+        // Corrección SonarQube (Regla S1226): No reasignar parámetros del método. Se usan variables
+        // nuevas.
         if (name != null && !name.isBlank()) {
-            name = name.replaceAll("[^a-zA-Z0-9 ]", "");
-            results.retainAll(recipeRepository.findByNameContainingIgnoreCase(name));
+            String sanitizedName = name.replaceAll("[^a-zA-Z0-9 ]", "");
+            results.retainAll(recipeRepository.findByNameContainingIgnoreCase(sanitizedName));
         }
         if (cuisineType != null && !cuisineType.isBlank()) {
-            cuisineType = cuisineType.replaceAll("[^a-zA-Z0-9 ]", "");
-            results.retainAll(recipeRepository.findByCuisineTypeContainingIgnoreCase(cuisineType));
+            String sanitizedCuisine = cuisineType.replaceAll("[^a-zA-Z0-9 ]", "");
+            results.retainAll(
+                    recipeRepository.findByCuisineTypeContainingIgnoreCase(sanitizedCuisine));
         }
         if (countryOfOrigin != null && !countryOfOrigin.isBlank()) {
-            results.retainAll(recipeRepository.findByCountryOfOriginContainingIgnoreCase(countryOfOrigin));
+            results.retainAll(
+                    recipeRepository.findByCountryOfOriginContainingIgnoreCase(countryOfOrigin));
         }
         if (difficulty != null && !difficulty.isBlank()) {
             results.retainAll(recipeRepository.findByDifficultyContainingIgnoreCase(difficulty));
         }
         if (ingredients != null && !ingredients.isEmpty()) {
-            // Match recipes that contain all requested ingredients (case-insensitive).
             List<String> lowerIngredients = ingredients.stream()
-                    .filter(i -> i != null && !i.isBlank())
-                    .map(String::toLowerCase)
-                    .toList();
+                    .filter(i -> i != null && !i.isBlank()).map(String::toLowerCase).toList();
 
             results.removeIf(r -> {
-                List<String> recipeIngredients = r.getIngredients().stream()
-                        .filter(i -> i != null)
-                        .map(String::toLowerCase)
-                        .toList();
+                List<String> recipeIngredients = r.getIngredients().stream().filter(i -> i != null)
+                        .map(String::toLowerCase).toList();
                 return !recipeIngredients.containsAll(lowerIngredients);
             });
         }
@@ -84,15 +83,16 @@ public class RecipeController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'USER')") // <--- AMBOS PUEDEN CREAR
     public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
         if (recipe.getId() != null) {
-            // Avoid allowing the client to set the id manually when creating.
             recipe.setId(null);
         }
         Recipe saved = recipeRepository.save(recipe);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
+    @PreAuthorize("hasRole('ADMIN')") // <--- SOLO ADMIN PUEDE BORRAR
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable("id") Long id) {
         if (id == null) {

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
@@ -19,6 +20,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 
 @EnableWebSecurity()
 @Configuration
+@EnableMethodSecurity
 class WebSecurityConfig {
 
     @Autowired
@@ -34,19 +36,22 @@ class WebSecurityConfig {
         http
                 // 1. Habilitamos CORS con la configuración que definimos abajo
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf((csrf) -> csrf.disable())
-                .headers(headers -> headers
+                .csrf((csrf) -> csrf.disable()).headers(headers -> headers
                         // A05: Corrección de CSP y X-Content-Type-Options
-                        .contentSecurityPolicy(
-                                csp -> csp.policyDirectives("default-src 'self'; script-src 'self'; style-src 'self';"))
+                        .contentSecurityPolicy(csp -> csp.policyDirectives(
+                                "default-src 'self'; script-src 'self'; style-src 'self';"))
                         .contentTypeOptions(withDefaults()) // Activa el 'nosniff' por defecto
                 )
-                .authorizeHttpRequests(authz -> authz
-                        .requestMatchers(HttpMethod.POST, "/login").permitAll()
+                .authorizeHttpRequests(authz -> authz.requestMatchers(HttpMethod.POST, "/login").permitAll()
+                       // .requestMatchers(HttpMethod.POST, "/register").permitAll() // AGREGADO:
+                                                                                               // RUTA
+                                                                                               // DE
+                                                                                               // REGISTRO
+                                                                                         // PÚBLICA
                         .requestMatchers("/error").permitAll()
                         .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
-                        .requestMatchers("/recipes/**").authenticated()
-                        .anyRequest().authenticated())
+                        .requestMatchers("/recipes/**").authenticated().anyRequest()
+                        .authenticated())
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -56,15 +61,11 @@ class WebSecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        
-        // ACTUALIZADO: Añadimos el puerto 8002 (tu nuevo Front) 
-        configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:8002", 
-            "http://localhost:8080", 
-            "http://127.0.0.1:8002",
-            "http://localhost"
-        ));
-        
+
+        // ACTUALIZADO: Añadimos el puerto 8002 (tu nuevo Front)
+        configuration.setAllowedOrigins(Arrays.asList("http://localhost:8002",
+                "http://localhost:8080", "http://127.0.0.1:8002", "http://localhost"));
+
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);

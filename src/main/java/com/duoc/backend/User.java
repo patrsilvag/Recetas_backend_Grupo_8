@@ -1,7 +1,6 @@
 package com.duoc.backend;
 
 import java.util.Collection;
-
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,77 +12,86 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-
-
-@Entity // This tells Hibernate to make a table out of this class
+@Entity
 @Table(name = "USERS")
 public class User implements UserDetails {
-  @Id
-  @GeneratedValue(strategy=GenerationType.AUTO)
-  private Integer id;
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    private Integer id;
 
-  private String username;
+    private String nombreCompleto; // NUEVO CAMPO SOLICITADO
 
-  private String email;
+    private String username;
 
-  private String password;
+    private String email;
 
-  public Integer getId() {
-    return id;
-  }
+    private String password;
+    
+    private String role; // En BD puede ser "ADMIN" o "USER"
 
-  public void setId(Integer id) {
-    this.id = id;
-  }
+    public Integer getId() {
+        return id;
+    }
 
-  public String getUsername() {
-    return username;
-  }
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
-  public void setUsername(String username) {
-    this.username = username;
-  }
+    public String getNombreCompleto() {
+        return nombreCompleto;
+    }
 
-  public String getEmail() {
-    return email;
-  }
+    public void setNombreCompleto(String nombreCompleto) {
+        this.nombreCompleto = nombreCompleto;
+    }
 
-  public void setEmail(String email) {
-    this.email = email;
-  }
+    public String getUsername() {
+        return username;
+    }
 
-  public String getPassword() {
-    return password;
-  }
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-  public void setPassword(String password) {
-    this.password = password;
-  }
+    public String getEmail() {
+        return email;
+    }
 
-@Override
-public Collection<? extends GrantedAuthority> getAuthorities() {
-    // Esto asigna el rol "ROLE_USER" a cualquier usuario que haga login exitoso
-    return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
-}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
-@Override
-public boolean isAccountNonExpired() {
-  return true; // Cambiado de Exception a true
-}
+    public String getPassword() {
+        return password;
+    }
 
-@Override
-public boolean isAccountNonLocked() {
-  return true; // Permite que el usuario no esté bloqueado
-}
+    public void setPassword(String password) {
+        this.password = password;
+    }
 
-@Override
-public boolean isCredentialsNonExpired() {
-  return true; // Las credenciales no expiran por ahora
-}
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Si el campo role es "ADMIN", Spring lo leerá como "ROLE_ADMIN"
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.role.toUpperCase()));
+    }
 
-@Override
-public boolean isEnabled() {
-  return true; // El usuario está habilitado para entrar
-}
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
 
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
+    }
 }

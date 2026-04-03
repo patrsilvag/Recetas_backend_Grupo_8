@@ -16,28 +16,26 @@ package com.duoc.backend;
     @Configuration
     public class JWTAuthenticationConfig {
 
-        public String getJWTToken(String username) {
-            List<GrantedAuthority> grantedAuthorities = AuthorityUtils
-                    .commaSeparatedStringToAuthorityList("ROLE_USER");
+    // 🚨 CAMBIO: Ahora recibe las autoridades (roles) como parámetro
+    public String getJWTToken(String username, List<GrantedAuthority> grantedAuthorities) {
 
+        Map<String, Object> claims = new HashMap<>();
+        // Ahora guardamos los roles REALES que le pasemos
+        claims.put("authorities", grantedAuthorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(Collectors.toList()));
 
-            Map<String, Object> claims = new HashMap<>();
-            claims.put("authorities", grantedAuthorities.stream()
-                    .map(GrantedAuthority::getAuthority)
-                    .collect(Collectors.toList()));
+        String token = Jwts.builder()
+                .claims()
+                .add(claims)
+                .subject(username)
+                .issuedAt(new Date(System.currentTimeMillis()))
+                .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 1440))
+                .and()
+                .signWith(getSigningKey(SUPER_SECRET_KEY))
+                .compact();
 
-            String token = Jwts.builder()
-                    .claims()
-                    .add(claims)
-                    .subject(username)
-                    .issuedAt(new Date(System.currentTimeMillis()))
-                    .expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 1440))
-                    .and()
-                    .signWith(getSigningKey(SUPER_SECRET_KEY))
-                    .compact();
-
-            return "Bearer " + token;
-        }
-
+        return "Bearer " + token;
     }
+}
 
