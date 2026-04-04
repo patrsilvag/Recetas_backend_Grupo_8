@@ -34,21 +34,18 @@ class WebSecurityConfig {
 
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
-        http
-                // 1. Habilitamos CORS con la configuración que definimos abajo
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-                .csrf((csrf) -> csrf.disable()).headers(headers -> headers
-                        // A05: Corrección de CSP y X-Content-Type-Options
-                        .contentSecurityPolicy(csp -> csp.policyDirectives(
-                                "default-src 'self'; script-src 'self'; style-src 'self';"))
-                        .contentTypeOptions(withDefaults()) // Activa el 'nosniff' por defecto
-                )
-                .authorizeHttpRequests(
-                        authz -> authz.requestMatchers(HttpMethod.POST, "/login", "/register")
-                                .permitAll().requestMatchers("/error").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
-                                .requestMatchers("/recipes/**").authenticated().anyRequest()
-                                .authenticated())
+        http.cors(withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
+                // 🔓 RUTAS PÚBLICAS
+                .requestMatchers(HttpMethod.POST, "/login", "/register").permitAll()
+                .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
+                .requestMatchers("/error").permitAll()
+
+                // 🔐 RUTAS PRIVADAS (Requieren Token JWT)
+                // El detalle y la creación de recetas piden autenticación
+                .requestMatchers(HttpMethod.GET, "/recipes/detail/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/recipes/create").authenticated()
+
+                .anyRequest().authenticated())
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
