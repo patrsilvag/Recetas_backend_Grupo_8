@@ -36,7 +36,8 @@ class WebSecurityConfig {
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
         http.cors(withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
                 // 🔓 RUTAS PÚBLICAS
-                .requestMatchers(HttpMethod.POST, "/login", "/register").permitAll()
+                .requestMatchers(HttpMethod.POST, "/login", "/register",
+                        "/registro").permitAll()
                 .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
                 .requestMatchers("/error").permitAll()
 

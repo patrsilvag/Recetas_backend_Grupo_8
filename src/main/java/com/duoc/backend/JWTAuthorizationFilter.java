@@ -72,13 +72,23 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         try {
             String path = request.getServletPath();
+            String method = request.getMethod(); // 👈 IMPORTANTE: Captura el método (GET o POST)
 
-            // 🚶 EXCEPCIONES: Rutas que no requieren Token
-            if (path.equals("/login") || path.equals("/register")
-                    || path.equals("/recipes/search") || path.startsWith("/recipes/")) {
+            
+            // 🚶 1. EXCEPCIONES: Rutas 100% públicas (Login y Registro)
+            if (path.equals("/login") || path.equals("/registro") || path.equals("/register")) {
                 filterChain.doFilter(request, response);
                 return;
             }
+
+            // 🚶 2. EXCEPCIÓN CONDICIONAL: Ver recetas o buscar es público, pero CREAR (POST) NO.
+            if ((path.equals("/recipes") || path.equals("/recipes/")
+                    || path.equals("/recipes/search")) && method.equalsIgnoreCase("GET")) {
+
+                filterChain.doFilter(request, response);
+                return;
+            }
+
 
             // 🛑 BLOQUEO: Validación obligatoria para detalle y creación
             if (path.startsWith("/recipes/detail") || path.equals("/recipes/create")) {
