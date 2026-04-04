@@ -1,9 +1,10 @@
 package com.duoc.backend;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -12,8 +13,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
-import java.util.ArrayList;
-import java.util.List;
 
 
 @RestController
@@ -33,36 +32,32 @@ public class LoginController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestParam("user") String username,
-        @RequestParam("password") String password) {
+            @RequestParam("password") String password) {
 
-    try {
-        // 1. Buscar usuario en Oracle (Carga username, password y ROLE)
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        try {
+            // 1. Buscar usuario en Oracle (Carga username, password y ROLE)
+            final UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
-        // 2. Validar contraseña
-        if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+            // 2. Validar contraseña
+            if (!passwordEncoder.matches(password, userDetails.getPassword())) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                        "Credenciales inválidas");
+            }
+
+            // 3. GENERAR TOKEN CON ROLES REALES 🚨
+            // Convertimos a List de forma segura
+            List<GrantedAuthority> authorities = new ArrayList<>(userDetails.getAuthorities());
+
+            String token = jwtAuthenticationConfig.getJWTToken(username, authorities);
+
+            return ResponseEntity.ok(token);
+
+        } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
         }
-
-        // 3. GENERAR TOKEN CON ROLES REALES 🚨
-        // Convertimos a List de forma segura
-        List<GrantedAuthority> authorities = new ArrayList<>(userDetails.getAuthorities());
-
-        String token = jwtAuthenticationConfig.getJWTToken(
-            username,
-            authorities
-        );
-
-        return ResponseEntity.ok(token);
-
-    } catch (Exception e) {
-        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
     }
-}
 
     // NUEVO ENDPOINT DE REGISTRO - SEMANA 4
-    // 🔒 SOLO EL ADMIN PUEDE CREAR USUARIOS
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody User newUser) {
 
@@ -78,7 +73,10 @@ public class LoginController {
                     .body("Error: El correo ya está registrado");
         }
 
-        // 🛡️ REQUISITO: Encriptar la contraseña antes de guardar
+        // FORZAR ROL POR DEFECTO: Todos los registros públicos serán 'USER'
+        newUser.setRole("USER");
+
+        // 🛡️ REQUISITO: Encriptar la contraseña antes de guardar (OWASP A02)
         newUser.setPassword(passwordEncoder.encode(newUser.getPassword()));
 
         // Guardar en la base de datos

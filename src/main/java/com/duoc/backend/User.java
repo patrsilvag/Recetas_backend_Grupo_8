@@ -1,11 +1,10 @@
 package com.duoc.backend;
 
 import java.util.Collection;
+import java.util.Collections;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
-import java.util.Collections;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -15,6 +14,18 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "USERS")
 public class User implements UserDetails {
+
+    // Agrega el Setter que te falta:
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    // Agrega también el Getter:
+    public String getRole() {
+        return role;
+    }
+
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Integer id;
@@ -26,7 +37,7 @@ public class User implements UserDetails {
     private String email;
 
     private String password;
-    
+
     private String role; // En BD puede ser "ADMIN" o "USER"
 
     public Integer getId() {
@@ -71,8 +82,9 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Si el campo role es "ADMIN", Spring lo leerá como "ROLE_ADMIN"
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + this.role.toUpperCase()));
+        // Si el role es null, usamos "USER" por defecto para que no explote el login
+        String currentRole = (this.role != null) ? this.role.toUpperCase() : "USER";
+        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + currentRole));
     }
 
     @Override

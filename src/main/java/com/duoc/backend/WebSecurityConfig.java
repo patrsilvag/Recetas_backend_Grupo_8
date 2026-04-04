@@ -1,5 +1,7 @@
 package com.duoc.backend;
 
+import static org.springframework.security.config.Customizer.*;
+import java.util.Arrays;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -7,16 +9,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 // NUEVOS IMPORTS PARA CORS
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import java.util.Arrays;
-import static org.springframework.security.config.Customizer.withDefaults;
+
 
 @EnableWebSecurity()
 @Configuration
@@ -42,16 +43,12 @@ class WebSecurityConfig {
                                 "default-src 'self'; script-src 'self'; style-src 'self';"))
                         .contentTypeOptions(withDefaults()) // Activa el 'nosniff' por defecto
                 )
-                .authorizeHttpRequests(authz -> authz.requestMatchers(HttpMethod.POST, "/login").permitAll()
-                       // .requestMatchers(HttpMethod.POST, "/register").permitAll() // AGREGADO:
-                                                                                               // RUTA
-                                                                                               // DE
-                                                                                               // REGISTRO
-                                                                                         // PÚBLICA
-                        .requestMatchers("/error").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
-                        .requestMatchers("/recipes/**").authenticated().anyRequest()
-                        .authenticated())
+                .authorizeHttpRequests(
+                        authz -> authz.requestMatchers(HttpMethod.POST, "/login", "/register")
+                                .permitAll().requestMatchers("/error").permitAll()
+                                .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
+                                .requestMatchers("/recipes/**").authenticated().anyRequest()
+                                .authenticated())
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
