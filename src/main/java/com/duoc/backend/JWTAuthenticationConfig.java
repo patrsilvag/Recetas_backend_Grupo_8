@@ -32,7 +32,7 @@ import io.jsonwebtoken.Jwts;
                 .signWith(getSigningKey(SUPER_SECRET_KEY))
                 .compact();
 
-        return "Bearer " + token;
+        return token;
     }
 }
 
