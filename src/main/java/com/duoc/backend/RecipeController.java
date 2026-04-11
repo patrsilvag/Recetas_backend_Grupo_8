@@ -19,10 +19,12 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/recipes")
 public class RecipeController {
 
+    // 🛡️ Constante para evitar "String Literal Duplication" y facilitar mantenimiento
+    private static final String UPLOAD_DIR = "uploads/";
+
     @Autowired
     private RecipeRepository recipeRepository;
 
-    // 🔹 Agregamos el repositorio de comentarios
     @Autowired
     private CommentRepository commentRepository;
 
@@ -82,6 +84,8 @@ public class RecipeController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
+        if (recipe == null)
+            return ResponseEntity.badRequest().build();
         if (recipe.getId() != null) {
             recipe.setId(null);
         }
@@ -125,49 +129,66 @@ public class RecipeController {
     public ResponseEntity<Recipe> uploadPhoto(@PathVariable("id") Long id,
             @RequestParam("file") MultipartFile file) {
 
+        // 1. Validar existencia de receta
         Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
         if (optionalRecipe.isEmpty())
             return ResponseEntity.notFound().build();
-        if (file.isEmpty())
+
+        // 2. Validar que el archivo no sea nulo ni vacío (Bug Fix Sonar)
+        if (file == null || file.isEmpty())
             return ResponseEntity.badRequest().build();
 
         try {
-            String folder = "uploads/";
-            String fileName = System.currentTimeMillis() + "_"
-                    + file.getOriginalFilename().replaceAll(" ", "_");
-            Path path = Paths.get(folder + fileName);
+            // 3. Obtener y sanitizar nombre de archivo de forma segura
+            String originalName = file.getOriginalFilename();
+            String sanitizedName = (originalName != null && !originalName.isBlank())
+                    ? originalName.replaceAll("[^a-zA-Z0-9.-]", "_")
+                    : "file_" + System.currentTimeMillis();
+
+            String fileName = System.currentTimeMillis() + "_" + sanitizedName;
+
+            // 4. Resolver ruta de forma segura contra Path Traversal
+            Path root = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
+            Path path = root.resolve(fileName).normalize();
+
+            // Seguridad: Verificar que el archivo resultante sigue dentro de la carpeta uploads
+            if (!path.startsWith(root)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
             Files.createDirectories(path.getParent());
             Files.write(path, file.getBytes());
 
-            String localUrl = "http://localhost:8081/uploads/" + fileName;
+            // 5. Guardar URL local en la receta
+            String localUrl = "http://localhost:8081/" + UPLOAD_DIR + fileName;
             Recipe recipe = optionalRecipe.get();
             recipe.getPhotos().add(localUrl);
             recipeRepository.save(recipe);
 
             return ResponseEntity.ok(recipe);
         } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    // =================================================================================
-    // 💬 NUEVO ENDPOINT: COMENTAR Y VALORAR (Semana 5)
-    // =================================================================================
     @PostMapping("/{id}/comments")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Recipe> addComment(@PathVariable("id") Long id,
             @RequestBody Comment comment) {
+
+        if (comment == null)
+            return ResponseEntity.badRequest().build();
+
         Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
         if (optionalRecipe.isEmpty())
             return ResponseEntity.notFound().build();
 
         Recipe recipe = optionalRecipe.get();
 
-        // Establecemos la relación bidireccional
+        // Relación bidireccional y persistencia
         comment.setRecipe(recipe);
-        commentRepository.save(comment); // Guardamos el comentario
+        commentRepository.save(comment);
 
-        // Retornamos la receta actualizada (que ya incluirá el comentario por el mappedBy)
         return ResponseEntity.ok(recipe);
     }
 }
