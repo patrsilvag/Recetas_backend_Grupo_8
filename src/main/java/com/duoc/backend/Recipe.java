@@ -9,9 +9,11 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany; // 👈 Importante
+import jakarta.persistence.CascadeType; // 👈 Importante
 
 /**
- * Represents a cooking recipe with metadata, ingredients and optional photos.
+ * Represents a cooking recipe with metadata, ingredients, photos, videos and comments.
  */
 @Entity
 public class Recipe {
@@ -21,31 +23,31 @@ public class Recipe {
     private Long id;
 
     private String name;
-
-    /** Tipo de cocina (e.g. italiana, mexicana, japonesa, etc.). */
     private String cuisineType;
-
-    /** País de origen de la receta. */
     private String countryOfOrigin;
-
-    /** Dificultad de la receta (e.g. fácil, media, difícil). */
     private String difficulty;
-
-    /** Instrucciones de preparación. */
     private String instructions;
-
-    /** Tiempo de cocción en minutos. */
     private Integer cookTimeMinutes;
 
-    /** Lista de ingredientes. */
     @ElementCollection
     @CollectionTable(name = "recipe_ingredients")
     private List<String> ingredients = new ArrayList<>();
 
-    /** URLs o identificadores de fotos que facilitan la comprensión de la receta. */
     @ElementCollection
     @CollectionTable(name = "recipe_photos")
     private List<String> photos = new ArrayList<>();
+
+    @ElementCollection
+    @CollectionTable(name = "recipe_videos")
+    private List<String> videos = new ArrayList<>();
+
+    // =================================================================================
+    // NUEVA RELACIÓN: COMENTARIOS (Semana 5)
+    // =================================================================================
+    @OneToMany(mappedBy = "recipe", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Comment> comments = new ArrayList<>();
+
+    // --- GETTERS Y SETTERS EXISTENTES ---
 
     public Long getId() {
         return id;
@@ -117,5 +119,23 @@ public class Recipe {
 
     public void setPhotos(List<String> photos) {
         this.photos = photos;
+    }
+
+    public List<String> getVideos() {
+        return videos;
+    }
+
+    public void setVideos(List<String> videos) {
+        this.videos = videos;
+    }
+
+    // --- NUEVO GETTER Y SETTER PARA COMENTARIOS ---
+
+    public List<Comment> getComments() {
+        return comments;
+    }
+
+    public void setComments(List<Comment> comments) {
+        this.comments = comments;
     }
 }

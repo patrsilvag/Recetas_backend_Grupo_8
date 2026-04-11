@@ -39,6 +39,7 @@ class WebSecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/login", "/register",
                         "/registro").permitAll()
                 .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers("/error").permitAll()
 
                 // 🔐 RUTAS PRIVADAS (Requieren Token JWT)
