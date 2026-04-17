@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.lang.NonNull;
 
 @RestController
 @RequestMapping("/recipes")
@@ -95,25 +96,25 @@ public class RecipeController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteRecipe(@PathVariable("id") Long id) {
-        if (id == null)
-            return ResponseEntity.badRequest().build();
+    public ResponseEntity<Void> deleteRecipe(@PathVariable("id") @NonNull Long id) {
+        
         if (!recipeRepository.existsById(id))
             return ResponseEntity.notFound().build();
         recipeRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    @SuppressWarnings("null")
     @PostMapping("/{id}/media")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Recipe> addMedia(@PathVariable("id") Long id,
+    public ResponseEntity<Recipe> addMedia(@PathVariable("id") @NonNull Long id,
             @RequestParam(required = false) String photoUrl,
             @RequestParam(required = false) String videoUrl) {
 
         Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
         if (optionalRecipe.isEmpty())
             return ResponseEntity.notFound().build();
-
+        
         Recipe recipe = optionalRecipe.get();
         if (photoUrl != null && !photoUrl.isBlank())
             recipe.getPhotos().add(photoUrl);
@@ -126,7 +127,7 @@ public class RecipeController {
 
     @PostMapping("/{id}/upload-photo")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Recipe> uploadPhoto(@PathVariable("id") Long id,
+    public ResponseEntity<Recipe> uploadPhoto(@PathVariable("id") @NonNull Long id,
             @RequestParam("file") MultipartFile file) {
 
         // 1. Validar existencia de receta
@@ -173,7 +174,7 @@ public class RecipeController {
 
     @PostMapping("/{id}/comments")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Recipe> addComment(@PathVariable("id") Long id,
+    public ResponseEntity<Recipe> addComment(@PathVariable("id") @NonNull Long id,
             @RequestBody Comment comment) {
 
         if (comment == null)
