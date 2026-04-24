@@ -27,15 +27,16 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
      * Extrae y valida los Claims del token JWT.
      */
     private Claims setSigningKey(HttpServletRequest request) {
-        String jwtToken =
-                request.getHeader(HEADER_AUTHORIZACION_KEY).replace(TOKEN_BEARER_PREFIX, "");
+        String authenticationHeader = request.getHeader(HEADER_AUTHORIZACION_KEY);
+        String jwtToken = authenticationHeader.replace(TOKEN_BEARER_PREFIX, "");
 
         return Jwts.parser().verifyWith((SecretKey) getSigningKey(JWT_SIGNING_VALUE)).build()
                 .parseSignedClaims(jwtToken).getPayload();
     }
 
     /**
-     * Configura la autenticación en el contexto de seguridad de Spring.
+     * Configura la autenticación en el contexto de seguridad de Spring. Mapea los roles del token a
+     * Authorities nativos de Spring Security.
      */
     private void setAuthentication(Claims claims) {
         Object authoritiesClaim = claims.get("authorities");
@@ -59,65 +60,39 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
     /**
      * Verifica si el Header de autorización está presente y tiene el formato correcto.
      */
-    private boolean isJWTValid(HttpServletRequest request, HttpServletResponse res) {
+    private boolean isJWTValid(HttpServletRequest request) {
         String authenticationHeader = request.getHeader(HEADER_AUTHORIZACION_KEY);
-        if (authenticationHeader == null || !authenticationHeader.startsWith(TOKEN_BEARER_PREFIX))
-            return false;
-        return true;
+        return authenticationHeader != null && authenticationHeader.startsWith(TOKEN_BEARER_PREFIX);
     }
 
     @Override
-    protected void doFilterInternal(@SuppressWarnings("null") HttpServletRequest request,
-            @SuppressWarnings("null") HttpServletResponse response,
-            @SuppressWarnings("null") FilterChain filterChain)
-            throws ServletException, IOException {
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
+            FilterChain filterChain) throws ServletException, IOException {
         try {
-            String path = request.getServletPath();
-            String method = request.getMethod(); // 👈 IMPORTANTE: Captura el método (GET o POST)
+            // 🛡️ LÓGICA NATIVA: El filtro ya no decide rutas.
+            // Si hay un token, lo valida y carga al "SecurityContext".
+            if (isJWTValid(request)) {
+                Claims claims = setSigningKey(request);
 
-
-            // 🚶 1. EXCEPCIONES: Rutas 100% públicas (Login y Registro)
-            if (path.equals("/login") || path.equals("/registro") || path.equals("/register")) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // 🚶 2. EXCEPCIÓN CONDICIONAL: Ver recetas o buscar es público, pero CREAR (POST) NO.
-            if ((path.equals("/recipes") || path.equals("/recipes/")
-                    || path.equals("/recipes/search")) && method.equalsIgnoreCase("GET")) {
-
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-
-            // 🛑 BLOQUEO: Validación obligatoria para detalle y creación
-            if (path.startsWith("/recipes/detail") || path.equals("/recipes/create")) {
-                if (!isJWTValid(request, response)) {
-                    // Si no es válido, detenemos el flujo aquí
-                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-                    return;
-                }
-            }
-
-            // Si hay un token válido presente (en cualquier ruta), procesamos la identidad
-            if (isJWTValid(request, response)) {
-                Claims claims = setSigningKey(request); // Corregido: antes validateToken
                 if (claims.get("authorities") != null) {
-                    setAuthentication(claims); // Corregido: antes setUpSpringAuthentication
+                    setAuthentication(claims);
                 } else {
                     SecurityContextHolder.clearContext();
                 }
             } else {
+                // Si no hay token, simplemente limpiamos el contexto.
+                // Spring Security bloqueará el acceso después si la ruta es privada.
                 SecurityContextHolder.clearContext();
             }
 
+            // Continuamos la cadena de filtros hacia WebSecurityConfig
             filterChain.doFilter(request, response);
 
         } catch (ExpiredJwtException | UnsupportedJwtException | MalformedJwtException e) {
+            // Si el token es inválido o expiró, respondemos 403 inmediatamente.
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, e.getMessage());
-            return;
+            response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                    "Sesión inválida: " + e.getMessage());
         }
     }
 }

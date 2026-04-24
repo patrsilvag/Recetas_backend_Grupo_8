@@ -13,11 +13,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-// NUEVOS IMPORTS PARA CORS
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-
 
 @EnableWebSecurity()
 @Configuration
@@ -35,34 +33,41 @@ class WebSecurityConfig {
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
         http.cors(withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
-                // 🔓 RUTAS PÚBLICAS
-                .requestMatchers(HttpMethod.POST, "/login", "/register",
-                        "/registro").permitAll()
-                .requestMatchers(HttpMethod.GET, "/recipes/**").permitAll()
+                // 🔓 1. RUTAS PÚBLICAS (Sin Token)
+                // Permitimos login, registro y ver el catálogo general sin estar logueado
+                .requestMatchers(HttpMethod.POST, "/login", "/register", "/registro").permitAll()
+                .requestMatchers(HttpMethod.GET, "/recipes", "/recipes/search/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                 .requestMatchers("/error").permitAll()
 
-                // 🔐 RUTAS PRIVADAS (Requieren Token JWT)
-                // El detalle y la creación de recetas piden autenticación
+                // 🔐 2. RUTAS PRIVADAS (Requieren Token JWT)
+                // El detalle de receta y la creación requieren estar autenticado
                 .requestMatchers(HttpMethod.GET, "/recipes/detail/**").authenticated()
-                .requestMatchers(HttpMethod.POST, "/recipes/create").authenticated()
+                .requestMatchers(HttpMethod.GET, "/recipes/private/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/recipes/create", "/recipes/*/comments")
+                .authenticated()
 
+                // 🛡️ 3. RUTAS DE ADMINISTRADOR (Nativo)
+                // Solo usuarios con rol ADMIN pueden gestionar otros usuarios
+                .requestMatchers("/users/**").hasRole("ADMIN")
+
+                // Cualquier otra petición requiere login
                 .anyRequest().authenticated())
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // 2. Definimos qué orígenes pueden hablar con este Backend (8081)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // ACTUALIZADO: Añadimos el puerto 8002 (tu nuevo Front)
+        // Orígenes permitidos (Asegúrate de incluir todos los puertos de tus entornos)
         configuration.setAllowedOrigins(Arrays.asList("http://localhost:8002",
                 "http://localhost:8080", "http://127.0.0.1:8002", "http://localhost"));
 
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Importante: "Authorization" debe estar permitido para que el JWT pase desde el Front
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
         configuration.setAllowCredentials(true);
 
