@@ -50,6 +50,11 @@ class FullIntegrationTest {
         Recipe creada = objectMapper.readValue(response, Recipe.class);
         Long id = creada.getId();
 
+        // ✨ VERIFICACIÓN ÉTICA DE PERSISTENCIA (Uso del Repositorio)
+        // Validamos que el ID generado realmente exista en Oracle Cloud antes de seguir
+        assertTrue(recipeRepository.existsById(id),
+                "La receta debe persistir correctamente en la BD");
+
         // 2. Buscar receta
         mockMvc.perform(get("/recipes/search").param("name", "Cazuela")).andExpect(status().isOk());
 
@@ -70,8 +75,11 @@ class FullIntegrationTest {
 
         // 5. Eliminar receta
         mockMvc.perform(delete("/recipes/" + id)).andExpect(status().isNoContent());
-    }
 
+        // ✨ VERIFICACIÓN FINAL: Aseguramos que la eliminación fue física en la base de datos
+        assertTrue(recipeRepository.findById(id).isEmpty(),
+                "La receta debe ser eliminada definitivamente");
+    }
     // 🔥 TEST DE RAMAS EN USER
     @Test
     @Transactional
