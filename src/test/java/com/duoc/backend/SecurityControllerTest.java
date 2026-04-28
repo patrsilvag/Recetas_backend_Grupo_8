@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional // Importante: Limpia la BD después de cada test
+@SuppressWarnings("null")
 class SecurityControllerTest {
 
     @Autowired

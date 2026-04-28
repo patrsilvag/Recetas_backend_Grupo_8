@@ -19,6 +19,7 @@ import java.util.List;
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 @Transactional
+@SuppressWarnings("null")
 class RecipeControllerBranchTest {
 
     @Autowired

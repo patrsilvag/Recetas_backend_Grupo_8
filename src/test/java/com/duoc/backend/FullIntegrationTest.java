@@ -34,6 +34,7 @@ class FullIntegrationTest {
     @Test
     @Transactional
     @WithMockUser(roles = "ADMIN")
+    @SuppressWarnings("null")
     void testFlujoPrincipal() throws Exception {
 
         // 1. Crear receta
