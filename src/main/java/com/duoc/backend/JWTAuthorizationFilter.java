@@ -20,10 +20,12 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.lang.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 
 @Component
 public class JWTAuthorizationFilter extends OncePerRequestFilter {
-
+    @Value("${jwt.secret}")
+    private String jwtSecret; // ✅ Inyección segura para validación
     /**
      * Extrae y valida los Claims del token JWT.
      */
@@ -31,7 +33,8 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
         String authenticationHeader = request.getHeader(HEADER_AUTHORIZACION_KEY);
         String jwtToken = authenticationHeader.replace(TOKEN_BEARER_PREFIX, "");
 
-        return Jwts.parser().verifyWith((SecretKey) getSigningKey(JWT_SIGNING_VALUE)).build()
+        return Jwts.parser().verifyWith((SecretKey) getSigningKey(
+                jwtSecret)).build()
                 .parseSignedClaims(jwtToken).getPayload();
     }
 
@@ -80,11 +83,7 @@ public class JWTAuthorizationFilter extends OncePerRequestFilter {
                 } else {
                     SecurityContextHolder.clearContext();
                 }
-            } else {
-                // Si no hay token, simplemente limpiamos el contexto.
-                // Spring Security bloqueará el acceso después si la ruta es privada.
-                SecurityContextHolder.clearContext();
-            }
+            } 
 
             // Continuamos la cadena de filtros hacia WebSecurityConfig
             filterChain.doFilter(request, response);

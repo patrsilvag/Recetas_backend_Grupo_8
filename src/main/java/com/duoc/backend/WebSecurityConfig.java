@@ -2,7 +2,7 @@ package com.duoc.backend;
 
 import static org.springframework.security.config.Customizer.*;
 import java.util.Arrays;
-import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,8 +22,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @EnableMethodSecurity
 class WebSecurityConfig {
 
-    @Autowired
-    JWTAuthorizationFilter jwtAuthorizationFilter;
+   
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -31,28 +30,30 @@ class WebSecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain configure(HttpSecurity http) throws Exception {
+    public SecurityFilterChain configure(HttpSecurity http,
+            JWTAuthorizationFilter jwtAuthorizationFilter) throws Exception {
+
         http.cors(withDefaults()).csrf(csrf -> csrf.disable()).authorizeHttpRequests(auth -> auth
-                // 🔓 1. RUTAS PÚBLICAS (Sin Token)
-                // Permitimos login, registro y ver el catálogo general sin estar logueado
+
                 .requestMatchers(HttpMethod.POST, "/login", "/register", "/registro").permitAll()
+
                 .requestMatchers(HttpMethod.GET, "/recipes", "/recipes/search/**").permitAll()
+
                 .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
+
                 .requestMatchers("/error").permitAll()
 
-                // 🔐 2. RUTAS PRIVADAS (Requieren Token JWT)
-                // El detalle de receta y la creación requieren estar autenticado
                 .requestMatchers(HttpMethod.GET, "/recipes/detail/**").authenticated()
+
                 .requestMatchers(HttpMethod.GET, "/recipes/private/**").authenticated()
+
                 .requestMatchers(HttpMethod.POST, "/recipes/create", "/recipes/*/comments")
                 .authenticated()
 
-                // 🛡️ 3. RUTAS DE ADMINISTRADOR (Nativo)
-                // Solo usuarios con rol ADMIN pueden gestionar otros usuarios
                 .requestMatchers("/users/**").hasRole("ADMIN")
 
-                // Cualquier otra petición requiere login
                 .anyRequest().authenticated())
+
                 .addFilterAfter(jwtAuthorizationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

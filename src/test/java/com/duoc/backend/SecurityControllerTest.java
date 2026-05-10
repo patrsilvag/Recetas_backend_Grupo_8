@@ -8,8 +8,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.transaction.annotation.Transactional;
-import java.util.HashMap;
-import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,19 +28,43 @@ class SecurityControllerTest {
     void testLoginAndRegisterFlow() throws Exception {
         String uniqueUser = "user_" + System.currentTimeMillis();
 
-        // 1. REGISTRO: Usamos un Map estructurado para evitar el error de Jackson
-        // (GrantedAuthority)
-        Map<String, String> registerReq = new HashMap<>();
-        registerReq.put("username", uniqueUser);
-        registerReq.put("password", "admin123");
-        registerReq.put("email", uniqueUser + "@duoc.cl");
+        // 1. REGISTRO: Usamos el LoginDTO (o el Map) para enviar un JSON válido
+        LoginDTO registerReq = new LoginDTO(uniqueUser, "admin123", uniqueUser + "@duoc.cl");
 
         mockMvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(registerReq)))
                 .andExpect(status().isCreated());
 
-        // 2. LOGIN: Validamos que el usuario recién creado pueda autenticarse
-        mockMvc.perform(post("/login").param("user", uniqueUser).param("password", "admin123"))
-                .andExpect(status().isOk());
+        // 2. LOGIN: ✅ CORRECCIÓN - Ahora enviamos un JSON, no parámetros de URL
+        // Usamos el mismo DTO para el login (el campo email puede ir nulo o ignorarse)
+        LoginDTO loginReq = new LoginDTO(uniqueUser, "admin123", null);
+
+        mockMvc.perform(post("/login").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(loginReq))).andExpect(status().isOk());
     }
+    
+    @Test
+    void testLoginFailures() throws Exception {
+    // Caso 1: Usuario que no existe
+    LoginDTO wrongUser = new LoginDTO("usuario_fantasma", "password", null);
+    mockMvc.perform(post("/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(wrongUser)))
+            .andExpect(status().isUnauthorized());
+
+    // Caso 2: Contraseña incorrecta
+    // Primero registramos uno
+    String user = "test_fail_" + System.currentTimeMillis();
+    LoginDTO reg = new LoginDTO(user, "real_pass", user + "@test.com");
+    mockMvc.perform(post("/register").contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(reg)));
+
+    // Intentamos login con pass mala
+    LoginDTO wrongPass = new LoginDTO(user, "wrong_pass", null);
+    mockMvc.perform(post("/login")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(wrongPass)))
+            .andExpect(status().isUnauthorized());
+}
+
 }

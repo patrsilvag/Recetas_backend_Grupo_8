@@ -6,9 +6,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.Objects;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,14 +20,16 @@ import org.springframework.lang.NonNull;
 @RequestMapping("/recipes")
 public class RecipeController {
 
-    // 🛡️ Constante para evitar "String Literal Duplication" y facilitar mantenimiento
     private static final String UPLOAD_DIR = "uploads/";
 
-    @Autowired
-    private RecipeRepository recipeRepository;
+    private final RecipeRepository recipeRepository;
+    private final CommentRepository commentRepository;
 
-    @Autowired
-    private CommentRepository commentRepository;
+    public RecipeController(RecipeRepository recipeRepository,
+            CommentRepository commentRepository) {
+        this.recipeRepository = recipeRepository;
+        this.commentRepository = commentRepository;
+    }
 
     @GetMapping("")
     public Iterable<Recipe> getAllRecipes() {
@@ -39,8 +41,8 @@ public class RecipeController {
         if (id == null) {
             return ResponseEntity.badRequest().build();
         }
-        Optional<Recipe> recipe = recipeRepository.findById(id);
-        return recipe.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+        return recipeRepository.findById(id).map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
@@ -54,13 +56,12 @@ public class RecipeController {
         recipeRepository.findAll().forEach(results::add);
 
         if (name != null && !name.isBlank()) {
-            String sanitizedName = name.replaceAll("[^a-zA-Z0-9 ]", "");
-            results.retainAll(recipeRepository.findByNameContainingIgnoreCase(sanitizedName));
+            results.retainAll(recipeRepository
+                    .findByNameContainingIgnoreCase(name.replaceAll("[^a-zA-Z0-9 ]", "")));
         }
         if (cuisineType != null && !cuisineType.isBlank()) {
-            String sanitizedCuisine = cuisineType.replaceAll("[^a-zA-Z0-9 ]", "");
-            results.retainAll(
-                    recipeRepository.findByCuisineTypeContainingIgnoreCase(sanitizedCuisine));
+            results.retainAll(recipeRepository.findByCuisineTypeContainingIgnoreCase(
+                    cuisineType.replaceAll("[^a-zA-Z0-9 ]", "")));
         }
         if (countryOfOrigin != null && !countryOfOrigin.isBlank()) {
             results.retainAll(
@@ -84,12 +85,20 @@ public class RecipeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
-    public ResponseEntity<Recipe> createRecipe(@RequestBody Recipe recipe) {
-        if (recipe == null)
+    public ResponseEntity<Recipe> createRecipe(@RequestBody RecipeDTO dto) {
+        if (dto == null) {
             return ResponseEntity.badRequest().build();
-        if (recipe.getId() != null) {
-            recipe.setId(null);
         }
+
+        Recipe recipe = new Recipe();
+        recipe.setName(dto.name());
+        recipe.setCuisineType(dto.cuisineType());
+        recipe.setCountryOfOrigin(dto.countryOfOrigin());
+        recipe.setDifficulty(dto.difficulty());
+        recipe.setInstructions(dto.instructions());
+        recipe.setCookTimeMinutes(dto.cookTimeMinutes());
+        recipe.setIngredients(dto.ingredients());
+
         Recipe saved = recipeRepository.save(recipe);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
@@ -97,32 +106,29 @@ public class RecipeController {
     @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteRecipe(@PathVariable("id") @NonNull Long id) {
-        
         if (!recipeRepository.existsById(id))
             return ResponseEntity.notFound().build();
         recipeRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
-    @SuppressWarnings("null")
     @PostMapping("/{id}/media")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Recipe> addMedia(@PathVariable("id") @NonNull Long id,
             @RequestParam(required = false) String photoUrl,
             @RequestParam(required = false) String videoUrl) {
 
-        Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
-        if (optionalRecipe.isEmpty())
-            return ResponseEntity.notFound().build();
-        
-        Recipe recipe = optionalRecipe.get();
-        if (photoUrl != null && !photoUrl.isBlank())
-            recipe.getPhotos().add(photoUrl);
-        if (videoUrl != null && !videoUrl.isBlank())
-            recipe.getVideos().add(videoUrl);
-
-        recipeRepository.save(recipe);
-        return ResponseEntity.ok(recipe);
+        return recipeRepository.findById(id).map(recipe -> {
+            if (photoUrl != null && !photoUrl.isBlank()) {
+                recipe.getPhotos().add(photoUrl);
+            }
+            if (videoUrl != null && !videoUrl.isBlank()) {
+                recipe.getVideos().add(videoUrl);
+            }
+            Recipe saved = recipeRepository.save(recipe);
+            // ✅ CORRECCIÓN: Objects.requireNonNull garantiza al compilador que 'saved' no es null
+            return ResponseEntity.ok(Objects.requireNonNull(saved));
+        }).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{id}/upload-photo")
@@ -130,66 +136,51 @@ public class RecipeController {
     public ResponseEntity<Recipe> uploadPhoto(@PathVariable("id") @NonNull Long id,
             @RequestParam("file") MultipartFile file) {
 
-        // 1. Validar existencia de receta
-        Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
-        if (optionalRecipe.isEmpty())
-            return ResponseEntity.notFound().build();
-
-        // 2. Validar que el archivo no sea nulo ni vacío (Bug Fix Sonar)
-        if (file == null || file.isEmpty())
-            return ResponseEntity.badRequest().build();
-
-        try {
-            // 3. Obtener y sanitizar nombre de archivo de forma segura
-            String originalName = file.getOriginalFilename();
-            String sanitizedName = (originalName != null && !originalName.isBlank())
-                    ? originalName.replaceAll("[^a-zA-Z0-9.-]", "_")
-                    : "file_" + System.currentTimeMillis();
-
-            String fileName = System.currentTimeMillis() + "_" + sanitizedName;
-
-            // 4. Resolver ruta de forma segura contra Path Traversal
-            Path root = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
-            Path path = root.resolve(fileName).normalize();
-
-            // Seguridad: Verificar que el archivo resultante sigue dentro de la carpeta uploads
-            if (!path.startsWith(root)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        return recipeRepository.findById(id).map(recipe -> {
+            if (file == null || file.isEmpty()) {
+                return ResponseEntity.badRequest().<Recipe>build();
             }
 
-            Files.createDirectories(path.getParent());
-            Files.write(path, file.getBytes());
+            try {
+                String originalName = file.getOriginalFilename();
+                String sanitizedName = (originalName != null && !originalName.isBlank())
+                        ? originalName.replaceAll("[^a-zA-Z0-9.-]", "_")
+                        : "file_" + System.currentTimeMillis();
 
-            // 5. Guardar URL local en la receta
-            String localUrl = "http://localhost:8081/" + UPLOAD_DIR + fileName;
-            Recipe recipe = optionalRecipe.get();
-            recipe.getPhotos().add(localUrl);
-            recipeRepository.save(recipe);
+                String fileName = System.currentTimeMillis() + "_" + sanitizedName;
+                Path root = Paths.get(UPLOAD_DIR).toAbsolutePath().normalize();
+                Path path = root.resolve(fileName).normalize();
 
-            return ResponseEntity.ok(recipe);
-        } catch (IOException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
+                if (!path.startsWith(root)) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).<Recipe>build();
+                }
+
+                Files.createDirectories(path.getParent());
+                Files.write(path, file.getBytes());
+
+                recipe.getPhotos().add("http://localhost:8081/" + UPLOAD_DIR + fileName);
+                Recipe saved = recipeRepository.save(recipe);
+                // ✅ CORRECCIÓN: Garantía de no-nulidad para cumplir con @NonNull
+                return ResponseEntity.ok(Objects.requireNonNull(saved));
+            } catch (IOException e) {
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).<Recipe>build();
+            }
+        }).orElse(ResponseEntity.notFound().build());
     }
 
+        
     @PostMapping("/{id}/comments")
     @PreAuthorize("hasAnyRole('ADMIN', 'USER')")
     public ResponseEntity<Recipe> addComment(@PathVariable("id") @NonNull Long id,
-            @RequestBody Comment comment) {
+            @RequestBody CommentDTO commentDto) {
 
-        if (comment == null)
-            return ResponseEntity.badRequest().build();
-
-        Optional<Recipe> optionalRecipe = recipeRepository.findById(id);
-        if (optionalRecipe.isEmpty())
-            return ResponseEntity.notFound().build();
-
-        Recipe recipe = optionalRecipe.get();
-
-        // Relación bidireccional y persistencia
-        comment.setRecipe(recipe);
-        commentRepository.save(comment);
-
-        return ResponseEntity.ok(recipe);
+        return recipeRepository.findById(id).map(recipe -> {
+            Comment comment = new Comment();
+            comment.setText(commentDto.text());
+            comment.setAuthor(commentDto.author());
+            comment.setRecipe(recipe);
+            commentRepository.save(comment);
+            return ResponseEntity.ok(recipe);
+        }).orElse(ResponseEntity.notFound().build());
     }
 }

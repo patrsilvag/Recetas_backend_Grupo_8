@@ -23,11 +23,15 @@ public class Comment {
 
     @ManyToOne
     @JoinColumn(name = "recipe_id")
-    @JsonIgnore // VITAL: Evita bucles infinitos al convertir a JSON
+    @JsonIgnore // Evita bucles infinitos al convertir a JSON
     private Recipe recipe;
 
-    // --- Constructor vacío para JPA ---
-    public Comment() {}
+    /**
+     * Constructor vacío requerido por JPA para la creación automática de entidades.
+     */
+    public Comment() {
+        // Constructor requerido por JPA
+    }
 
     // --- Getters y Setters ---
     public Long getId() {
