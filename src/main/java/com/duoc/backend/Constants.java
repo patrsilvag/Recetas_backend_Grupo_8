@@ -1,6 +1,5 @@
 package com.duoc.backend;
 
-import org.springframework.beans.factory.annotation.Value; // ✅ ESTE ES EL IMPORT QUE FALTA
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
@@ -23,8 +22,7 @@ public class Constants {
     // JWT
     public static final String ISSUER_INFO = "https://www.duocuc.cl/";
     // ✅ Inicializar con el mismo valor del properties por seguridad
-   // public static String JWT_SIGNING_VALUE =
-    //        "ZnJhc2VzbGFyZ2FzcGFyYWNvbG9jYXJjb21vY2xhdmVlbnVucHJvamVjdG9kZWVtZXBsb3BhcmFqd3Rjb25zcHJpbmdzZWN1cml0eQ==";
+   
     public static final long TOKEN_EXPIRATION_TIME = 864_000_000; // 10 day
 
     
